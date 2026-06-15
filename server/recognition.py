@@ -35,13 +35,30 @@ def process_image(image_path: str):
     # Detect
     results = model(img)
     
-    # Lấy bounding box đầu tiên (nếu có)
+    # Lấy bounding box
     for r in results:
         boxes = r.boxes
         if len(boxes) > 0:
-            # Chọn box đầu tiên (thường là biển số rõ nhất)
-            box = boxes[0]
-            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+            valid_boxes = []
+            img_area = img.shape[0] * img.shape[1]
+            
+            # Lọc các box hợp lệ
+            for box in boxes:
+                conf = box.conf[0].item()
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                box_area = (x2 - x1) * (y2 - y1)
+                
+                # Bỏ qua box rác: Độ tin cậy thấp hoặc chiếm quá 80% diện tích ảnh (nhận nhầm cả cái xe)
+                if conf > 0.4 and (box_area / img_area) < 0.8:
+                    valid_boxes.append((conf, x1, y1, x2, y2))
+            
+            if not valid_boxes:
+                continue
+                
+            # Chọn box có độ tin cậy cao nhất trong số các box hợp lệ
+            valid_boxes.sort(key=lambda x: x[0], reverse=True)
+            best_box = valid_boxes[0]
+            x1, y1, x2, y2 = best_box[1], best_box[2], best_box[3], best_box[4]
             
             # Crop ảnh
             cropped_plate = img[y1:y2, x1:x2]
@@ -89,9 +106,16 @@ def process_image(image_path: str):
                 
                 final_plate = "".join(chars)
                 
-                # 5. Tự động format lại cho đẹp mắt trên giao diện (VD: 77G1-169.32)
-                if len(final_plate) >= 8:
-                    final_plate = f"{final_plate[:4]}-{final_plate[4:len(final_plate)-2]}.{final_plate[-2:]}"
+                # 5. Tự động format lại cho đẹp mắt trên giao diện
+                if len(final_plate) == 8:
+                    # Biển ô tô 5 số (VD: 76A22222 -> 76A-222.22)
+                    final_plate = f"{final_plate[:3]}-{final_plate[3:6]}.{final_plate[6:]}"
+                elif len(final_plate) == 7:
+                    # Biển ô tô 4 số (VD: 76A1234 -> 76A-1234)
+                    final_plate = f"{final_plate[:3]}-{final_plate[3:]}"
+                elif len(final_plate) == 9:
+                    # Biển xe máy 5 số (VD: 77G116932 -> 77G1-169.32)
+                    final_plate = f"{final_plate[:4]}-{final_plate[4:7]}.{final_plate[7:]}"
                 
                 return final_plate, crop_path
                 
