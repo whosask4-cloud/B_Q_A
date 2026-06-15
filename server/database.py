@@ -87,5 +87,18 @@ def get_history(limit=50):
     conn.close()
     return [{"id": r[0], "plate_number": r[1], "entry_time": r[2], "exit_time": r[3], "status": r[4]} for r in rows]
 
+def reset_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # Xóa toàn bộ dữ liệu trong bảng
+    cursor.execute("DELETE FROM parking_sessions")
+    # Reset lại bộ đếm ID về 1
+    try:
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name='parking_sessions'")
+    except:
+        pass
+    conn.commit()
+    conn.close()
+
 if __name__ == "__main__":
     init_db()

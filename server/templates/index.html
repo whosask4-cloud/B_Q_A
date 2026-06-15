@@ -15,10 +15,13 @@
     </div>
 
     <div class="dashboard-container">
-        <header class="glass-panel">
+        <header class="glass-panel" style="display: flex; justify-content: space-between; align-items: center;">
             <h1>Quản Lý Bãi Đỗ Xe AI</h1>
-            <div class="status">
-                <span class="indicator online"></span> Server Đang Chạy
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="status">
+                    <span class="indicator online"></span> Server Đang Chạy
+                </div>
+                <button onclick="resetData()" style="background-color: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: 0.2s;">⚠️ Reset Dữ Liệu</button>
             </div>
         </header>
 
@@ -92,6 +95,19 @@
 
             } catch (error) {
                 console.error("Lỗi khi tải dữ liệu:", error);
+            }
+        }
+
+        async function resetData() {
+            if(confirm("⚠️ CẢNH BÁO: BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ DỮ LIỆU?\n\nThao tác này sẽ xóa sạch danh sách xe và toàn bộ ảnh chụp trong bãi!")) {
+                try {
+                    const response = await fetch('/api/reset', { method: 'POST' });
+                    const result = await response.json();
+                    alert(result.message);
+                    fetchData(); // Tải lại bảng ngay lập tức
+                } catch (error) {
+                    alert("Lỗi khi kết nối tới máy chủ để reset!");
+                }
             }
         }
 

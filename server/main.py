@@ -34,6 +34,24 @@ async def api_get_vehicles():
     history = database.get_history(limit=20)
     return {"parked": parked, "history": history}
 
+@app.post("/api/reset")
+async def api_reset_data():
+    """API để reset lại toàn bộ hệ thống (xóa database và ảnh)."""
+    # 1. Reset database
+    database.reset_db()
+    
+    # 2. Xóa toàn bộ ảnh trong thư mục images
+    if os.path.exists("images"):
+        for filename in os.listdir("images"):
+            file_path = os.path.join("images", filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                pass
+                
+    return {"status": "success", "message": "Đã khôi phục cài đặt gốc thành công!"}
+
 @app.post("/upload/entry")
 async def upload_entry(file: UploadFile = File(...)):
     """API cho ESP32-CAM cổng vào gọi."""

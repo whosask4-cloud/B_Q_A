@@ -113,5 +113,6 @@ Bấm nút **Upload (Mũi tên ngang)** trên Arduino IDE và chờ chạy đế
 4. YOLOv8 trên Laptop tìm thấy biển số, cắt khung hình, đưa cho EasyOCR đọc chữ và số.
 5. Biển số được lưu vào Cơ sở dữ liệu và hiện lên Giao diện Web ở cột **"Đang Đỗ"**.
 6. **Xe Đi Ra:** Quá trình tương tự diễn ra ở Cổng Ra. AI nhận diện, so khớp biển số, gạch tên khỏi danh sách Đang đỗ và tính thời gian xe đã gửi.
+7. **Khôi Phục Dữ Liệu:** Trong quá trình test, nếu bạn muốn xóa sạch toàn bộ danh sách xe và thư mục ảnh rác để làm lại từ đầu, chỉ cần bấm nút **"⚠️ Reset Dữ Liệu"** màu đỏ ngay góc trên cùng của Giao diện Web. Hệ thống sẽ tự dọn dẹp sạch sẽ trong 1 giây!
 
 **CHÚC BẠN HOÀN THÀNH XUẤT SẮC ĐỒ ÁN NÀY! 🎉**
