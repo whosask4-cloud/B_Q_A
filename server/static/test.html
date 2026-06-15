@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📱 Test Gửi Ảnh Điện Thoại</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            padding: 20px; 
+            background: #f0f2f5; 
+        }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            margin-bottom: 20px; 
+        }
+        h2 { color: #333; margin-bottom: 5px; }
+        p { color: #666; margin-top: 0; }
+        
+        /* Box upload file */
+        .file-upload-wrapper {
+            position: relative;
+            width: 100%;
+            height: 150px;
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8fbff;
+            cursor: pointer;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .file-upload-wrapper input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-upload-text {
+            font-size: 16px;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        #preview {
+            max-width: 100%;
+            max-height: 140px;
+            display: none;
+            border-radius: 5px;
+            position: absolute;
+            z-index: 10;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        button { 
+            flex: 1;
+            padding: 15px 10px; 
+            font-size: 16px; 
+            border: none; 
+            border-radius: 10px; 
+            color: white; 
+            cursor: pointer; 
+            font-weight: bold; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+        .btn-entry { background: linear-gradient(135deg, #28a745, #20c997); }
+        .btn-exit { background: linear-gradient(135deg, #dc3545, #f64f59); }
+        
+        #result { 
+            margin-top: 25px; 
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #e9ecef;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>🚗 Test Bằng Điện Thoại</h2>
+        <p>Giả lập điện thoại là Camera ESP32</p>
+        
+        <div class="file-upload-wrapper">
+            <span class="file-upload-text" id="uploadText">📸 Nhấn vào đây để Chụp/Chọn ảnh</span>
+            <!-- capture="environment" sẽ ưu tiên mở camera sau của điện thoại -->
+            <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="previewImage(event)">
+            <img id="preview" alt="Preview">
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn-entry" onclick="uploadImage('entry')">📥 CỔNG VÀO</button>
+            <button class="btn-exit" onclick="uploadImage('exit')">📤 CỔNG RA</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('preview');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    document.getElementById('uploadText').style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function uploadImage(gate) {
+            const fileInput = document.getElementById('imageInput');
+            const resultBox = document.getElementById('result');
+
+            if (!fileInput.files.length) {
+                alert("Bạn phải chọn hoặc chụp ảnh biển số trước nhé!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            resultBox.style.display = "block";
+            resultBox.innerHTML = "⏳ <b>Đang phân tích...</b><br>AI đang săi biển số, vui lòng chờ...";
+            resultBox.style.background = "#eef7ff";
+            resultBox.style.color = "#0056b3";
+
+            try {
+                // Gọi API của Laptop
+                const response = await fetch(`/upload/${gate}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === "success") {
+                    resultBox.style.background = "#d4edda";
+                    resultBox.style.color = "#155724";
+                    resultBox.innerHTML = `✅ <b>Thành công!</b><br>
+                                           Cổng: ${gate === 'entry' ? 'VÀO' : 'RA'}<br>
+                                           AI nhận ra biển số: <span style='font-size:24px; font-weight:bold;'>${data.plate}</span>`;
+                } else {
+                    resultBox.style.background = "#f8d7da";
+                    resultBox.style.color = "#721c24";
+                    resultBox.innerHTML = `❌ <b>Thất bại:</b> ${data.reason}`;
+                }
+            } catch (error) {
+                resultBox.style.background = "#f8d7da";
+                resultBox.style.color = "#721c24";
+                resultBox.innerHTML = "⚠️ Lỗi kết nối! Đảm bảo điện thoại và Laptop dùng chung 1 mạng Wi-Fi.";
+            }
+        }
+    </script>
+</body>
+</html>

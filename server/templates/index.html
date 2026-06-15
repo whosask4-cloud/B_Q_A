@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Parking System</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <div class="dashboard-container">
+        <header class="glass-panel">
+            <h1>Quản Lý Bãi Đỗ Xe AI</h1>
+            <div class="status">
+                <span class="indicator online"></span> Server Đang Chạy
+            </div>
+        </header>
+
+        <main class="content-grid">
+            <section class="glass-panel main-section">
+                <h2>Xe Đang Đỗ Trong Bãi</h2>
+                <div class="table-container">
+                    <table id="parked-table">
+                        <thead>
+                            <tr>
+                                <th>Ảnh (Vào)</th>
+                                <th>Biển Số</th>
+                                <th>Giờ Vào</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parked-body">
+                            <!-- Dữ liệu sẽ được load qua JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <aside class="glass-panel side-section">
+                <h2>Lịch Sử Gần Đây</h2>
+                <div class="history-list" id="history-list">
+                    <!-- Lịch sử load qua JS -->
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/vehicles');
+                const data = await response.json();
+                
+                // Cập nhật bảng xe đang đỗ
+                const parkedBody = document.getElementById('parked-body');
+                parkedBody.innerHTML = '';
+                if(data.parked.length === 0) {
+                    parkedBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Không có xe nào đang đỗ</td></tr>';
+                } else {
+                    data.parked.forEach(vehicle => {
+                        parkedBody.innerHTML += `
+                            <tr>
+                                <td><img src="/${vehicle.entry_image}" alt="Xe ${vehicle.plate_number}" class="vehicle-img" onerror="this.src='/static/placeholder.png'"></td>
+                                <td class="plate-number">${vehicle.plate_number}</td>
+                                <td>${vehicle.entry_time}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                // Cập nhật lịch sử
+                const historyList = document.getElementById('history-list');
+                historyList.innerHTML = '';
+                data.history.forEach(log => {
+                    let statusClass = log.status === 'đang đỗ' ? 'status-in' : 'status-out';
+                    historyList.innerHTML += `
+                        <div class="history-item">
+                            <div class="plate-number small">${log.plate_number}</div>
+                            <div class="history-details">
+                                <span class="badge ${statusClass}">${log.status}</span>
+                                <span>Vào: ${log.entry_time}</span>
+                                ${log.exit_time ? `<span>Ra: ${log.exit_time}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+            } catch (error) {
+                console.error("Lỗi khi tải dữ liệu:", error);
+            }
+        }
+
+        // Gọi lần đầu và thiết lập chạy mỗi 2 giây
+        fetchData();
+        setInterval(fetchData, 2000);
+    </script>
+</body>
+</html>
