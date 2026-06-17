@@ -26,15 +26,20 @@
 
 Mỗi mạch ESP32-CAM sẽ đi kèm với 1 cảm biến VL53L0X. Bạn dùng dây `Cái - Cái` cắm trực tiếp 4 chân của cảm biến vào các chân trần của ESP32-CAM theo đúng bảng sau:
 
-| Chân trên VL53L0X | Chân trên ESP32-CAM | Chức năng (Ý nghĩa) |
+| Chân Linh Kiện | Chân trên ESP32-S3 | Chức năng (Ý nghĩa) |
 | :---: | :---: | :--- |
-| **VIN** (VCC) | **5V** (hoặc 3.3V) | Cấp nguồn điện cho cảm biến hoạt động. |
-| **GND** | **GND** | Chân nối đất (âm). |
-| **SCL** | **GPIO 14** | Chân xung nhịp (Clock) để truyền dữ liệu I2C. |
-| **SDA** | **GPIO 13** | Chân dữ liệu (Data) để truyền khoảng cách về ESP32. |
+| **VL53L0X: VIN** | **5V** (hoặc 3.3V) | Cấp nguồn điện cho cảm biến hoạt động. |
+| **VL53L0X: GND** | **GND** | Chân nối đất (âm). |
+| **VL53L0X: SCL** | **GPIO 14** | Chân xung nhịp (Clock) để truyền dữ liệu I2C. |
+| **VL53L0X: SDA** | **GPIO 13** | Chân dữ liệu (Data) để truyền khoảng cách về ESP32. |
+| **Servo: Đỏ** | **Nguồn 5V Rời** | Nối vào cực Dương (5V) của **NGUỒN RỜI** (Ví dụ: hộp pin 4xAA hoặc module nguồn). |
+| **Servo: Đen/Nâu**| **GND Nguồn Rời + ESP32** | Nối vào cực Âm của nguồn rời, **VÀ PHẢI NỐI CHUNG** với chân **GND** của ESP32. |
+| **Servo: Vàng/Cam**| **GPIO 2** | Chân tín hiệu nhận lệnh mở/đóng Barie. |
 
 > [!WARNING]
-> Tuyệt đối không cắm ngược cực VIN và GND, nếu không cảm biến sẽ bị cháy ngay lập tức. Các chân còn lại trên VL53L0X (như XSHUT, GPIO1) thì bỏ trống.
+> **LƯU Ý CỰC KỲ QUAN TRỌNG:**
+> 1. Tuyệt đối không cắm ngược cực VIN và GND của cảm biến VL53L0X, nếu không sẽ cháy ngay lập tức.
+> 2. Khi dùng nguồn riêng cho Servo, **BẮT BUỘC PHẢI NỐI CHUNG MẠCH ĐẤT (GND)** giữa nguồn rời và mạch ESP32-S3. Nếu không nối chung GND, xung tín hiệu sẽ không có điện áp tham chiếu, dẫn đến Servo giật lag, chạy loạn xạ hoặc không chạy.
 
 ---
 
