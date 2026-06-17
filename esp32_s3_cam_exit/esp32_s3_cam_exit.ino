@@ -1,6 +1,9 @@
 #include "esp_camera.h"
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <Wire.h>
+#include <Adafruit_VL53L0X.h>
+#include <ESP32Servo.h>
 
 // ================= THAY ĐỔI THÔNG TIN MẠNG =================
 const char *ssid = "H09";
@@ -8,7 +11,7 @@ const char *password = "hoilamgi";
 
 // ================= THAY ĐỔI ĐỊA CHỈ IP MÁY CHỦ =================
 // IP của Laptop đang chạy Python Server
-const String serverName = "http://192.168.1.22:8000/upload/entry";
+const String serverName = "http://192.168.1.22:8000/upload/exit"; // <--- CỔNG RA
 
 // ================= CẤU HÌNH CHÂN CHO ESP32-S3 (Freenove/Generic S3 CAM)
 // =================
@@ -31,13 +34,39 @@ const String serverName = "http://192.168.1.22:8000/upload/entry";
 #define HREF_GPIO_NUM 7
 #define PCLK_GPIO_NUM 13
 
-// ================= PIN NÚT BOOT (ĐỂ CHỤP ẢNH) =================
-#define BOOT_BUTTON_PIN                                                        \
-  0 // Nút BOOT trên mạch ESP32-S3 thường được nối với GPIO 0
+// ================= CẤU HÌNH CẢM BIẾN & SERVO =================
+#define I2C_SDA 13
+#define I2C_SCL 14
+#define SERVO_PIN 2
+#define BOOT_BUTTON_PIN 0  // Sử dụng nút BOOT để debug/chụp bằng tay
+
+Adafruit_VL53L0X lox = Adafruit_VL53L0X();
+Servo gateServo;
+
+// Góc xoay của Servo
+const int ANGLE_CLOSED = 0;   // Barie đóng
+const int ANGLE_OPEN = 90;    // Barie mở
 
 void setup() {
   Serial.begin(115200);
   pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
+
+  // Khởi tạo Servo
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  gateServo.setPeriodHertz(50);      // Standard 50hz servo
+  gateServo.attach(SERVO_PIN, 500, 2400); // Attach servo to pin 2
+  gateServo.write(ANGLE_CLOSED);     // Mặc định đóng
+
+  // Khởi tạo I2C cho VL53L0X
+  Wire.begin(I2C_SDA, I2C_SCL);
+  if (!lox.begin()) {
+    Serial.println(F("CẢNH BÁO: Không tìm thấy cảm biến VL53L0X. Vui lòng kiểm tra dây nối!"));
+  } else {
+    Serial.println(F("Khởi tạo VL53L0X thành công!"));
+  }
 
   // Kết nối WiFi
   WiFi.begin(ssid, password);
@@ -72,13 +101,12 @@ void setup() {
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
 
-  // Quan trọng: ESP32-S3 N16R8 có 8MB PSRAM (Phải bật OPI PSRAM trong Tools)
   config.pixel_format = PIXFORMAT_JPEG;
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   config.fb_location = CAMERA_FB_IN_PSRAM;
 
   if (psramFound()) {
-    config.frame_size = FRAMESIZE_UXGA; // Độ phân giải cao (1600x1200)
+    config.frame_size = FRAMESIZE_UXGA; 
     config.jpeg_quality = 10;
     config.fb_count = 2;
     config.grab_mode = CAMERA_GRAB_LATEST;
@@ -87,7 +115,6 @@ void setup() {
     config.jpeg_quality = 12;
     config.fb_count = 1;
     config.fb_location = CAMERA_FB_IN_DRAM;
-    Serial.println("CẢNH BÁO: KHÔNG TÌM THẤY PSRAM! Ảnh sẽ bị mờ.");
   }
 
   esp_err_t err = esp_camera_init(&config);
@@ -95,17 +122,26 @@ void setup() {
     Serial.printf("Khởi tạo camera thất bại: 0x%x\n", err);
     return;
   }
-  Serial.println("Camera đã sẵn sàng!");
+  Serial.println("Camera CỔNG RA đã sẵn sàng!");
 
-  // Tùy chỉnh chất lượng OV3660
   sensor_t *s = esp_camera_sensor_get();
   if (s->id.PID == OV3660_PID) {
-    s->set_brightness(s, 1);  // up the brightness just a bit
-    s->set_saturation(s, -2); // lower the saturation
+    s->set_brightness(s, 1);  
+    s->set_saturation(s, -2); 
   }
-  s->set_vflip(s, 1);   
-  s->set_hmirror(s, 0);
-  Serial.println("===== ĐÃ ÁP DỤNG CODE LẬT ẢNH MỚI (V:1, H:0) =====");
+  s->set_vflip(s, 0);   
+  s->set_hmirror(s, 1);
+}
+
+void openGate() {
+  Serial.println("MỞ BARIE CHO XE RA!");
+  gateServo.write(ANGLE_OPEN);
+  
+  // Mở trong 3 giây
+  delay(3000);
+  
+  Serial.println("ĐÓNG BARIE LẠI!");
+  gateServo.write(ANGLE_CLOSED);
 }
 
 void sendPhoto() {
@@ -115,70 +151,88 @@ void sendPhoto() {
     return;
   }
 
-  Serial.println("Đang gửi ảnh lên Server...");
+  Serial.println("Đang gửi ảnh CỔNG RA lên Server...");
   HTTPClient http;
   http.begin(serverName);
 
-  // Tạo ranh giới cho form-data
   String boundary = "----ESP32S3Boundary";
   http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
 
-  // Tạo body yêu cầu
   String head = "--" + boundary + "\r\n";
-  head += "Content-Disposition: form-data; name=\"file\"; "
-          "filename=\"esp32s3_capture.jpg\"\r\n";
+  head += "Content-Disposition: form-data; name=\"file\"; filename=\"esp32s3_capture_exit.jpg\"\r\n";
   head += "Content-Type: image/jpeg\r\n\r\n";
   String tail = "\r\n--" + boundary + "--\r\n";
 
   uint32_t totalLen = head.length() + fb->len + tail.length();
 
-  // ESP32-S3 có PSRAM nên ta cấp phát buffer trực tiếp để gửi dễ dàng và không
-  // bị lỗi timeout
   uint8_t *post_buffer = (uint8_t *)ps_malloc(totalLen);
   if (post_buffer == nullptr) {
-    Serial.println("Lỗi: Không đủ bộ nhớ PSRAM để tạo HTTP request!");
+    Serial.println("Lỗi: Không đủ bộ nhớ PSRAM!");
     http.end();
     esp_camera_fb_return(fb);
     return;
   }
 
-  // Copy các phần vào buffer
   memcpy(post_buffer, head.c_str(), head.length());
   memcpy(post_buffer + head.length(), fb->buf, fb->len);
   memcpy(post_buffer + head.length() + fb->len, tail.c_str(), tail.length());
 
-  // Bắt đầu gửi
   int httpResponseCode = http.POST(post_buffer, totalLen);
 
   if (httpResponseCode > 0) {
     Serial.printf("Server Response: %d\n", httpResponseCode);
     String response = http.getString();
     Serial.println(response);
+
+    // Kiểm tra xem phản hồi có chứa "success" hay không
+    if (response.indexOf("\"status\":\"success\"") >= 0 || response.indexOf("\"status\": \"success\"") >= 0) {
+      Serial.println("=> Server nhận diện thành công!");
+      openGate();
+    } else {
+      Serial.println("=> Không mở được barie (Không có xe, xe lỗi biển, hoặc lỗi server).");
+    }
   } else {
-    Serial.printf("Lỗi kết nối Server: %s\n",
-                  http.errorToString(httpResponseCode).c_str());
+    Serial.printf("Lỗi kết nối Server: %s\n", http.errorToString(httpResponseCode).c_str());
   }
 
-  // Giải phóng bộ nhớ
   free(post_buffer);
   http.end();
   esp_camera_fb_return(fb);
 }
 
 void loop() {
-  int button_state = digitalRead(BOOT_BUTTON_PIN);
+  int boot_state = digitalRead(BOOT_BUTTON_PIN);
+  bool object_detected = false;
+  
+  // Đọc dữ liệu từ cảm biến laser
+  VL53L0X_RangingMeasurementData_t measure;
+  lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
 
-  // Khi bấm nút BOOT, GPIO 0 sẽ bị kéo xuống LOW (0)
-  if (button_state == LOW) {
-    Serial.println("ĐÃ BẤM NÚT BOOT! TIẾN HÀNH CHỤP ẢNH...");
+  // Kiểm tra nếu cảm biến hoạt động và có vật cản gần hơn 150mm
+  if (measure.RangeStatus != 4) {  // Nếu không bị out of range
+    if (measure.RangeMilliMeter < 150) {
+      object_detected = true;
+    }
+  }
+
+  // Khi có vật cản (laser < 150mm) HOẶC bấm nút BOOT (LOW)
+  if (object_detected || boot_state == LOW) {
+    if (boot_state == LOW) {
+      Serial.println("ĐÃ BẤM NÚT BOOT (DEBUG)! TIẾN HÀNH CHỤP ẢNH CỔNG RA...");
+    } else {
+      Serial.print("PHÁT HIỆN XE RA (Khoảng cách: ");
+      Serial.print(measure.RangeMilliMeter);
+      Serial.println("mm)! TIẾN HÀNH CHỤP ẢNH...");
+    }
+    
     sendPhoto();
 
-    // Chờ người dùng thả nút ra để tránh chụp liên tục nhiều tấm
+    // Chờ người dùng thả nút ra (nếu bấm BOOT)
     while (digitalRead(BOOT_BUTTON_PIN) == LOW) {
       delay(10);
     }
     
-    // Nghỉ một chút
-    delay(500);
+    // Đợi 2 giây chống dội (tránh chụp liên tục)
+    delay(2000);
   }
 }
