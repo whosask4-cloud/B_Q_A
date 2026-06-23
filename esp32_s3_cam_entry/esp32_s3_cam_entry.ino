@@ -12,7 +12,7 @@ const char *password = "hoilamgi";
 // ================= THAY ĐỔI ĐỊA CHỈ IP MÁY CHỦ =================
 // IP của Laptop đang chạy Python Server
 const String serverName =
-    "http://192.168.1.22:8000/upload/entry"; // <--- CỔNG VÀO
+    "http://192.168.1.27:8000/upload/entry"; // <--- CỔNG VÀO
 
 // ================= CẤU HÌNH CHÂN CHO ESP32-S3 (Freenove/Generic S3 CAM)
 // =================
@@ -36,8 +36,8 @@ const String serverName =
 #define PCLK_GPIO_NUM 13
 
 // ================= CẤU HÌNH CẢM BIẾN & SERVO =================
-#define I2C_SDA 13
-#define I2C_SCL 14
+#define I2C_SDA 21
+#define I2C_SCL 47
 #define SERVO_PIN 2
 #define BOOT_BUTTON_PIN 0 // Sử dụng nút BOOT để debug/chụp bằng tay
 
@@ -45,7 +45,7 @@ Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 Servo gateServo;
 
 // Góc xoay của Servo
-const int ANGLE_CLOSED = 0; // Barie đóng
+const int ANGLE_CLOSED = 180; // Barie đóng
 const int ANGLE_OPEN = 90;  // Barie mở
 
 void setup() {
@@ -131,8 +131,8 @@ void setup() {
     s->set_brightness(s, 1);
     s->set_saturation(s, -2);
   }
-  s->set_vflip(s, 0);
-  s->set_hmirror(s, 1);
+  s->set_vflip(s, 1);
+  s->set_hmirror(s, 0);
 }
 
 void openGate() {
@@ -215,23 +215,24 @@ void loop() {
   lox.rangingTest(&measure,
                   false); // pass in 'true' to get debug data printout!
 
-  // Kiểm tra nếu cảm biến hoạt động và có vật cản gần hơn 150mm
+  // Kiểm tra nếu cảm biến hoạt động và có vật cản gần hơn 100mm
   if (measure.RangeStatus != 4) { // Nếu không bị out of range
-    if (measure.RangeMilliMeter < 150) {
+    if (measure.RangeMilliMeter < 100) {
       object_detected = true;
     }
   }
 
-  // Khi có vật cản (laser < 150mm) HOẶC bấm nút BOOT (LOW)
+  // Khi có vật cản (laser < 100mm) HOẶC bấm nút BOOT (LOW)
   if (object_detected || boot_state == LOW) {
     if (boot_state == LOW) {
-      Serial.println("ĐÃ BẤM NÚT BOOT (DEBUG)! TIẾN HÀNH CHỤP ẢNH CỔNG VÀO...");
+      Serial.println("ĐÃ BẤM NÚT BOOT (DEBUG)! ĐỢI 1.5 GIÂY RỒI CHỤP ẢNH CỔNG VÀO...");
     } else {
       Serial.print("PHÁT HIỆN XE VÀO (Khoảng cách: ");
       Serial.print(measure.RangeMilliMeter);
-      Serial.println("mm)! TIẾN HÀNH CHỤP ẢNH...");
+      Serial.println("mm)! ĐỢI 1.5 GIÂY RỒI CHỤP ẢNH...");
     }
 
+    delay(1500); // Đợi 1.5 giây
     sendPhoto();
 
     // Chờ người dùng thả nút ra (nếu bấm BOOT)

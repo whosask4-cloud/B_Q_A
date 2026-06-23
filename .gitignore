@@ -7,3 +7,16 @@ __pycache__/
 *.sqlite
 *.db
 server/images/
+
+# Ignore word/pptx generation files and artifacts
+*.docx
+*.pptx
+docx/
+pptx/
+generate_*.js
+node_modules/
+package.json
+package-lock.json
+bao_cao_*_DRAFT.md
+giai_thich_*.md
+huong_dan_*.md

@@ -1,9 +1,9 @@
 #include "esp_camera.h"
+#include <Adafruit_VL53L0X.h>
+#include <ESP32Servo.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <Wire.h>
-#include <Adafruit_VL53L0X.h>
-#include <ESP32Servo.h>
 
 // ================= THAY ĐỔI THÔNG TIN MẠNG =================
 const char *ssid = "H09";
@@ -11,7 +11,8 @@ const char *password = "hoilamgi";
 
 // ================= THAY ĐỔI ĐỊA CHỈ IP MÁY CHỦ =================
 // IP của Laptop đang chạy Python Server
-const String serverName = "http://192.168.1.22:8000/upload/exit"; // <--- CỔNG RA
+const String serverName =
+    "http://192.168.1.27:8000/upload/exit"; // <--- CỔNG RA
 
 // ================= CẤU HÌNH CHÂN CHO ESP32-S3 (Freenove/Generic S3 CAM)
 // =================
@@ -35,16 +36,16 @@ const String serverName = "http://192.168.1.22:8000/upload/exit"; // <--- CỔNG
 #define PCLK_GPIO_NUM 13
 
 // ================= CẤU HÌNH CẢM BIẾN & SERVO =================
-#define I2C_SDA 13
-#define I2C_SCL 14
+#define I2C_SDA 21
+#define I2C_SCL 47
 #define SERVO_PIN 2
-#define BOOT_BUTTON_PIN 0  // Sử dụng nút BOOT để debug/chụp bằng tay
+#define BOOT_BUTTON_PIN 0 // Sử dụng nút BOOT để debug/chụp bằng tay
 
 Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 Servo gateServo;
 
 // Góc xoay của Servo
-const int ANGLE_CLOSED = 0;   // Barie đóng
+const int ANGLE_CLOSED = 180; // Barie đóng
 const int ANGLE_OPEN = 90;    // Barie mở
 
 void setup() {
@@ -56,14 +57,15 @@ void setup() {
   ESP32PWM::allocateTimer(1);
   ESP32PWM::allocateTimer(2);
   ESP32PWM::allocateTimer(3);
-  gateServo.setPeriodHertz(50);      // Standard 50hz servo
+  gateServo.setPeriodHertz(50);           // Standard 50hz servo
   gateServo.attach(SERVO_PIN, 500, 2400); // Attach servo to pin 2
-  gateServo.write(ANGLE_CLOSED);     // Mặc định đóng
+  gateServo.write(ANGLE_CLOSED);          // Mặc định đóng
 
   // Khởi tạo I2C cho VL53L0X
   Wire.begin(I2C_SDA, I2C_SCL);
   if (!lox.begin()) {
-    Serial.println(F("CẢNH BÁO: Không tìm thấy cảm biến VL53L0X. Vui lòng kiểm tra dây nối!"));
+    Serial.println(F("CẢNH BÁO: Không tìm thấy cảm biến VL53L0X. Vui lòng kiểm "
+                     "tra dây nối!"));
   } else {
     Serial.println(F("Khởi tạo VL53L0X thành công!"));
   }
@@ -106,7 +108,7 @@ void setup() {
   config.fb_location = CAMERA_FB_IN_PSRAM;
 
   if (psramFound()) {
-    config.frame_size = FRAMESIZE_UXGA; 
+    config.frame_size = FRAMESIZE_UXGA;
     config.jpeg_quality = 10;
     config.fb_count = 2;
     config.grab_mode = CAMERA_GRAB_LATEST;
@@ -126,20 +128,20 @@ void setup() {
 
   sensor_t *s = esp_camera_sensor_get();
   if (s->id.PID == OV3660_PID) {
-    s->set_brightness(s, 1);  
-    s->set_saturation(s, -2); 
+    s->set_brightness(s, 1);
+    s->set_saturation(s, -2);
   }
-  s->set_vflip(s, 0);   
+  s->set_vflip(s, 0);
   s->set_hmirror(s, 1);
 }
 
 void openGate() {
   Serial.println("MỞ BARIE CHO XE RA!");
   gateServo.write(ANGLE_OPEN);
-  
+
   // Mở trong 3 giây
   delay(3000);
-  
+
   Serial.println("ĐÓNG BARIE LẠI!");
   gateServo.write(ANGLE_CLOSED);
 }
@@ -159,7 +161,8 @@ void sendPhoto() {
   http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
 
   String head = "--" + boundary + "\r\n";
-  head += "Content-Disposition: form-data; name=\"file\"; filename=\"esp32s3_capture_exit.jpg\"\r\n";
+  head += "Content-Disposition: form-data; name=\"file\"; "
+          "filename=\"esp32s3_capture_exit.jpg\"\r\n";
   head += "Content-Type: image/jpeg\r\n\r\n";
   String tail = "\r\n--" + boundary + "--\r\n";
 
@@ -185,14 +188,17 @@ void sendPhoto() {
     Serial.println(response);
 
     // Kiểm tra xem phản hồi có chứa "success" hay không
-    if (response.indexOf("\"status\":\"success\"") >= 0 || response.indexOf("\"status\": \"success\"") >= 0) {
+    if (response.indexOf("\"status\":\"success\"") >= 0 ||
+        response.indexOf("\"status\": \"success\"") >= 0) {
       Serial.println("=> Server nhận diện thành công!");
       openGate();
     } else {
-      Serial.println("=> Không mở được barie (Không có xe, xe lỗi biển, hoặc lỗi server).");
+      Serial.println("=> Không mở được barie (Không có xe, xe lỗi biển, hoặc "
+                     "lỗi server).");
     }
   } else {
-    Serial.printf("Lỗi kết nối Server: %s\n", http.errorToString(httpResponseCode).c_str());
+    Serial.printf("Lỗi kết nối Server: %s\n",
+                  http.errorToString(httpResponseCode).c_str());
   }
 
   free(post_buffer);
@@ -203,35 +209,38 @@ void sendPhoto() {
 void loop() {
   int boot_state = digitalRead(BOOT_BUTTON_PIN);
   bool object_detected = false;
-  
+
   // Đọc dữ liệu từ cảm biến laser
   VL53L0X_RangingMeasurementData_t measure;
-  lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
+  lox.rangingTest(&measure,
+                  false); // pass in 'true' to get debug data printout!
 
-  // Kiểm tra nếu cảm biến hoạt động và có vật cản gần hơn 150mm
-  if (measure.RangeStatus != 4) {  // Nếu không bị out of range
-    if (measure.RangeMilliMeter < 150) {
+  // Kiểm tra nếu cảm biến hoạt động và có vật cản gần hơn 100mm
+  if (measure.RangeStatus != 4) { // Nếu không bị out of range
+    if (measure.RangeMilliMeter < 100) {
       object_detected = true;
     }
   }
 
-  // Khi có vật cản (laser < 150mm) HOẶC bấm nút BOOT (LOW)
+  // Khi có vật cản (laser < 100mm) HOẶC bấm nút BOOT (LOW)
   if (object_detected || boot_state == LOW) {
     if (boot_state == LOW) {
-      Serial.println("ĐÃ BẤM NÚT BOOT (DEBUG)! TIẾN HÀNH CHỤP ẢNH CỔNG RA...");
+      Serial.println(
+          "ĐÃ BẤM NÚT BOOT (DEBUG)! ĐỢI 1.5 GIÂY RỒI CHỤP ẢNH CỔNG RA...");
     } else {
       Serial.print("PHÁT HIỆN XE RA (Khoảng cách: ");
       Serial.print(measure.RangeMilliMeter);
-      Serial.println("mm)! TIẾN HÀNH CHỤP ẢNH...");
+      Serial.println("mm)! ĐỢI 1.5 GIÂY RỒI CHỤP ẢNH...");
     }
-    
+
+    delay(1500); // Đợi 1.5 giây
     sendPhoto();
 
     // Chờ người dùng thả nút ra (nếu bấm BOOT)
     while (digitalRead(BOOT_BUTTON_PIN) == LOW) {
       delay(10);
     }
-    
+
     // Đợi 2 giây chống dội (tránh chụp liên tục)
     delay(2000);
   }
