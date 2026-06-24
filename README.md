@@ -4,6 +4,67 @@
 
 ---
 
+## 📐 Sơ Đồ Nguyên Lý Tổng Quan
+
+```mermaid
+graph TD
+    subgraph ENTRY ["Xe VÀO bãi"]
+        E1["VL53L0X phát hiện xe"]
+        E1 -->|"Đợi 1.5s"| E2["ESP32-S3 chụp ảnh"]
+    end
+
+    subgraph EXIT ["Xe RA khỏi bãi"]
+        X1["VL53L0X phát hiện xe"]
+        X1 -->|"Đợi 1.5s"| X2["ESP32-S3 chụp ảnh"]
+    end
+
+    E2 -->|"Gửi ảnh qua WiFi"| SV["Server nhận ảnh"]
+    X2 -->|"Gửi ảnh qua WiFi"| SV
+
+    SV --> YOLO["YOLOv8 detect biển số"]
+    YOLO --> OCR["EasyOCR đọc ký tự"]
+    OCR --> DB["SQLite lưu/so khớp"]
+    DB --> WEB["Web Dashboard cập nhật"]
+    DB -->|"Trả response"| GATE["Servo mở Barie 3s"]
+    GATE -->|"Chống dội 2s"| DONE(["Hoàn tất"])
+```
+
+### Flowchart Cổng VÀO
+
+```mermaid
+graph TD
+    A["VL53L0X đo khoảng cách"] --> B{"< 100mm?"}
+    B -->|"Không"| A
+    B -->|"Có"| C["Đợi 1.5s rồi chụp ảnh"]
+    C --> D["Gửi ảnh qua WiFi đến Server"]
+    D --> E["YOLOv8 + EasyOCR nhận diện biển số"]
+    E --> F{"Đọc được?"}
+    F -->|"Không"| H["Không mở Barie"]
+    F -->|"Có"| G["Lưu vào SQLite, mở Barie 3s"]
+    H --> I["Chống dội 2s"] --> A
+    G --> I
+```
+
+### Flowchart Cổng RA
+
+```mermaid
+graph TD
+    A["VL53L0X đo khoảng cách"] --> B{"< 100mm?"}
+    B -->|"Không"| A
+    B -->|"Có"| C["Đợi 1.5s rồi chụp ảnh"]
+    C --> D["Gửi ảnh qua WiFi đến Server"]
+    D --> E["YOLOv8 + EasyOCR nhận diện biển số"]
+    E --> F{"Đọc được?"}
+    F -->|"Không"| H["Không mở Barie"]
+    F -->|"Có"| G{"So khớp với xe đang đỗ?"}
+    G -->|"Không khớp"| H
+    G -->|"Khớp"| I["Cập nhật đã ra, mở Barie 3s"]
+    H --> J["Chống dội 2s"] --> A
+    I --> J
+```
+
+---
+
 ## 🛠 Phần 1: Chuẩn Bị Linh Kiện (Hardware)
 
 Để mô hình bãi giữ xe có 2 cổng (1 cổng VÀO, 1 cổng RA) hoạt động độc lập, bạn cần mua đúng và đủ các linh kiện sau:
