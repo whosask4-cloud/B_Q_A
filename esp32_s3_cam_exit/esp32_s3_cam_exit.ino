@@ -6,13 +6,13 @@
 #include <Wire.h>
 
 // ================= THAY ĐỔI THÔNG TIN MẠNG =================
-const char *ssid = "H09";
-const char *password = "hoilamgi";
+const char *ssid = "PTIT.HCM_SV";
+const char *password = "";
 
 // ================= THAY ĐỔI ĐỊA CHỈ IP MÁY CHỦ =================
 // IP của Laptop đang chạy Python Server
 const String serverName =
-    "http://192.168.1.27:8000/upload/exit"; // <--- CỔNG RA
+    "http://10.251.8.73:8000/upload/exit"; // <--- CỔNG RA
 
 // ================= CẤU HÌNH CHÂN CHO ESP32-S3 (Freenove/Generic S3 CAM)
 // =================

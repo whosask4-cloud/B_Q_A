@@ -6,13 +6,13 @@
 #include <Wire.h>
 
 // ================= THAY ĐỔI THÔNG TIN MẠNG =================
-const char *ssid = "H09";
-const char *password = "hoilamgi";
+const char *ssid = "PTIT.HCM_SV";
+const char *password = "";
 
 // ================= THAY ĐỔI ĐỊA CHỈ IP MÁY CHỦ =================
 // IP của Laptop đang chạy Python Server
 const String serverName =
-    "http://192.168.1.27:8000/upload/entry"; // <--- CỔNG VÀO
+    "http://10.251.8.73:8000/upload/entry"; // <--- CỔNG VÀO
 
 // ================= CẤU HÌNH CHÂN CHO ESP32-S3 (Freenove/Generic S3 CAM)
 // =================
@@ -46,7 +46,7 @@ Servo gateServo;
 
 // Góc xoay của Servo
 const int ANGLE_CLOSED = 180; // Barie đóng
-const int ANGLE_OPEN = 90;  // Barie mở
+const int ANGLE_OPEN = 90;    // Barie mở
 
 void setup() {
   Serial.begin(115200);
@@ -225,7 +225,8 @@ void loop() {
   // Khi có vật cản (laser < 100mm) HOẶC bấm nút BOOT (LOW)
   if (object_detected || boot_state == LOW) {
     if (boot_state == LOW) {
-      Serial.println("ĐÃ BẤM NÚT BOOT (DEBUG)! ĐỢI 1.5 GIÂY RỒI CHỤP ẢNH CỔNG VÀO...");
+      Serial.println(
+          "ĐÃ BẤM NÚT BOOT (DEBUG)! ĐỢI 1.5 GIÂY RỒI CHỤP ẢNH CỔNG VÀO...");
     } else {
       Serial.print("PHÁT HIỆN XE VÀO (Khoảng cách: ");
       Serial.print(measure.RangeMilliMeter);
